@@ -33,7 +33,7 @@ func Test002ClientServerOverWebsocketShouldCommunicate(t *testing.T) {
 		err := cli.Start()
 		panicOn(err)
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 		fmt.Printf("\n test: done with sleep.\n")
 		cli.Stop()
 		fmt.Printf("\n test: done with cli.Stop().\n")
@@ -135,7 +135,7 @@ func (p *ServerSender) Start() {
 			select {
 			case <-p.ReqStop:
 				return
-			case <-time.After(200 * time.Millisecond):
+			case <-time.After(2 * time.Millisecond):
 				msg := fmt.Sprintf("This is a random extra message from ServerSender, number '%v'", rnd.Int63())
 				fmt.Printf("\n ServerSender sending '%s'\n", msg)
 				p.Conn.SetWriteDeadline(time.Now().Add(writeWait))
@@ -236,7 +236,7 @@ func (p *WsClient) Start() error {
 	// to signal both reader and writer are done.
 	go func() {
 		wDone := false
-		rDone := true
+		rDone := false
 
 		// make nilable references to the channels
 		chWd := p.WriterDone
@@ -255,6 +255,7 @@ func (p *WsClient) Start() error {
 			}
 			if rDone && wDone {
 				c.Close()
+				fmt.Printf("\n client close monitor sees both done! closing p.Done\n")
 				close(p.Done)
 				return
 			}
@@ -285,8 +286,8 @@ func (p *WsClient) Start() error {
 	}()
 
 	go func() {
-		// test writer: every 1 second tick, send a message
-		ticker := time.NewTicker(time.Second)
+		// test writer: every 1 millisecond tick, send a message
+		ticker := time.NewTicker(time.Millisecond)
 		defer ticker.Stop()
 		defer close(p.WriterDone)
 
