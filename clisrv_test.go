@@ -141,7 +141,7 @@ func (p *ServerSender) Start() {
 				p.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 				err := p.Conn.WriteMessage(websocket.TextMessage, []byte(msg))
 				if err != nil {
-					log.Printf("echo() WriteMessage error: '%v'", err)
+					fmt.Printf("echo() WriteMessage error: '%v'", err)
 				}
 
 			}
@@ -156,28 +156,30 @@ func echo(w http.ResponseWriter, r *http.Request) {
 	c.SetPongHandler(func(string) error { c.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 
 	if err != nil {
-		log.Printf("echo() upgrader.Upgrade() error: '%v'", err)
+		fmt.Printf("echo() upgrader.Upgrade() error: '%v'", err)
 		return
 	}
 	defer c.Close()
 
-	/*	xtraSend := NewServerSender(c)
-			xtraSend.Start()
-		    fmt.Printf("\n called xtraSend.Start()\n")
-			defer xtraSend.Stop()
-	*/
+	xtraSend := NewServerSender(c)
+	xtraSend.Start()
+	fmt.Printf("\n called xtraSend.Start()\n")
+	defer xtraSend.Stop()
+
 	for {
 		c.SetReadDeadline(time.Now().Add(pongWait))
 		mt, message, err := c.ReadMessage()
 		if err != nil {
-			log.Printf("echo() ReadMessage error: '%v'", err)
+			fmt.Printf("echo() ReadMessage error: '%v'", err)
 			break
 		}
-		log.Printf("echo server recv: %s", message)
+
+		fmt.Printf("echo server recv: %s", message)
+
 		c.SetWriteDeadline(time.Now().Add(writeWait))
 		err = c.WriteMessage(mt, message)
 		if err != nil {
-			log.Printf("echo() WriteMessage error: '%v'", err)
+			fmt.Printf("echo() WriteMessage error: '%v'", err)
 			break
 		}
 	}
@@ -218,11 +220,11 @@ func (p *WsClient) Start() error {
 	log.SetFlags(0)
 
 	u := url.URL{Scheme: "ws", Host: p.Addr, Path: "/echo"}
-	log.Printf("connecting to %s", u.String())
+	fmt.Printf("connecting to %s", u.String())
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		log.Printf("dial:", err)
+		fmt.Printf("dial:", err)
 		return err
 	}
 
@@ -264,19 +266,21 @@ func (p *WsClient) Start() error {
 		defer close(p.ReaderDone)
 
 		for {
+			fmt.Printf("\n client reader: at top of read loop\n")
 			select {
 			case <-p.ReqStop:
 				fmt.Printf("\n client reader got ReqStop, exiting.\n")
 				return
+			default:
 			}
 
 			c.SetReadDeadline(time.Now().Add(pongWait))
 			_, message, err := c.ReadMessage()
 			if err != nil {
-				fmt.Printf("client reader error: '%v'", err)
+				fmt.Printf("\n client reader error: '%v'", err)
 				return
 			}
-			fmt.Printf("client reader recv: %s", message)
+			fmt.Printf("\n client reader recv: %s", message)
 		}
 	}()
 
@@ -293,18 +297,18 @@ func (p *WsClient) Start() error {
 				c.SetWriteDeadline(time.Now().Add(writeWait))
 				err := c.WriteMessage(websocket.TextMessage, []byte(t.String()))
 				if err != nil {
-					log.Println("write:", err)
+					fmt.Printf("tick every second test writer error: '%v'", err)
 					return
 				}
 			case <-p.ReqStop:
 				fmt.Printf("\n client writer got ReqStop, exiting.\n")
 
-				log.Println("stop request")
+				fmt.Println("stop request")
 				// To cleanly close a connection, a client should send a close
 				// frame and wait for the server to close the connection.
 				err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 				if err != nil {
-					log.Printf("client write close got error: '%v'", err)
+					fmt.Printf("client write close got error: '%v'", err)
 					return
 				}
 				return
